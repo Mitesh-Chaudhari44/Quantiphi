@@ -90,6 +90,42 @@ const updateRsvpStatus = async ({ userId, eventId, status }) => {
   };
 };
 
+/**
+ * Update per-event reminder settings & reset notified=false
+ */
+const updateRsvpReminder = async ({ userId, eventId, enabled, remindBeforeMinutes }) => {
+  const ALLOWED_MINUTES = [15, 30, 60, 120, 1440];
+  if (remindBeforeMinutes !== undefined && !ALLOWED_MINUTES.includes(Number(remindBeforeMinutes))) {
+    const error = new Error(`remindBeforeMinutes must be one of: ${ALLOWED_MINUTES.join(', ')}`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const rsvp = await Rsvp.findOne({ user: userId, eventId });
+  if (!rsvp) {
+    const error = new Error(`RSVP record for event '${eventId}' not found`);
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (enabled !== undefined) rsvp.reminder.enabled = enabled;
+  if (remindBeforeMinutes !== undefined) rsvp.reminder.remindBeforeMinutes = Number(remindBeforeMinutes);
+
+  // Reset notified status when settings change
+  rsvp.reminder.notified = false;
+
+  await rsvp.save();
+
+  const daysLeft = calculateDaysLeft(rsvp.eventSnapshot.date);
+  const friendsAttending = await shareService.getFriendsAttendingCount({ userId, eventId });
+
+  return {
+    ...rsvp.toJSON(),
+    daysLeft,
+    friendsAttending,
+  };
+};
+
 const deleteRsvp = async ({ userId, eventId }) => {
   const rsvp = await Rsvp.findOneAndDelete({ user: userId, eventId });
   if (!rsvp) {
@@ -137,6 +173,7 @@ const getUserRsvps = async ({ userId, status, when }) => {
 module.exports = {
   createOrUpdateRsvp,
   updateRsvpStatus,
+  updateRsvpReminder,
   deleteRsvp,
   getUserRsvps,
   calculateDaysLeft,

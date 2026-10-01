@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -28,7 +29,7 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* Navigation Links */}
+          {/* Navigation Links & User Controls */}
           <div className="flex items-center space-x-2 sm:space-x-4">
             <Link
               to="/"
@@ -58,6 +59,10 @@ const Navbar = () => {
                   Settings
                 </Link>
                 <div className="h-4 w-px bg-slate-800 my-auto hidden sm:block"></div>
+                
+                {/* Notification Bell */}
+                <NotificationBell />
+
                 <div className="flex items-center space-x-3 pl-2">
                   <div className="text-right hidden sm:block">
                     <p className="text-sm font-semibold text-slate-100">{user?.name}</p>
