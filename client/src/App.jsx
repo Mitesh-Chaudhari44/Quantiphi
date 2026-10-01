@@ -3,12 +3,14 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
+import ChatWidget from './components/ChatWidget';
 import Home from './pages/Home';
 import EventDetail from './pages/EventDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
+import ChatPage from './pages/ChatPage';
 
 function App() {
   return (
@@ -25,6 +27,7 @@ function App() {
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/chat" element={<ChatPage />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
 
@@ -32,6 +35,9 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      
+      {/* Floating Global Real-time Chat Widget */}
+      <ChatWidget />
     </div>
   );
 }

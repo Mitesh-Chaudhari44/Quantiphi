@@ -29,7 +29,7 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* Navigation Links & User Controls */}
+          {/* Navigation Links */}
           <div className="flex items-center space-x-2 sm:space-x-4">
             <Link
               to="/"
@@ -51,6 +51,14 @@ const Navbar = () => {
                   My RSVPs
                 </Link>
                 <Link
+                  to="/chat"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive('/chat') ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  🤖 AI Chat
+                </Link>
+                <Link
                   to="/profile"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive('/profile') ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-300 hover:text-white'
@@ -60,7 +68,6 @@ const Navbar = () => {
                 </Link>
                 <div className="h-4 w-px bg-slate-800 my-auto hidden sm:block"></div>
                 
-                {/* Notification Bell */}
                 <NotificationBell />
 
                 <div className="flex items-center space-x-3 pl-2">

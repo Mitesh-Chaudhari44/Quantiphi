@@ -1,13 +1,11 @@
 const ShareLink = require('../models/ShareLink');
 const Rsvp = require('../models/Rsvp');
 const ticketmasterService = require('./ticketmasterService');
-const { emitToUserRoom } = require('../sockets/socketManager');
 
 /**
  * Generate or retrieve existing share link for an event (Auth required; must have RSVP)
  */
 const generateShareLink = async ({ userId, eventId }) => {
-  // 1. Verify user has an RSVP for this event
   const rsvp = await Rsvp.findOne({ user: userId, eventId });
   if (!rsvp) {
     const error = new Error('You must RSVP to this event before you can generate a share link');
@@ -15,7 +13,6 @@ const generateShareLink = async ({ userId, eventId }) => {
     throw error;
   }
 
-  // 2. Find existing link or create new
   let shareLink = await ShareLink.findOne({ owner: userId, eventId });
 
   if (!shareLink) {
@@ -56,7 +53,6 @@ const generateShareLink = async ({ userId, eventId }) => {
 const processShareLinkClick = async ({ token, visitorUserId = null, visitorId }) => {
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
-  // 1. Look up link
   const shareLink = await ShareLink.findOne({ token });
   if (!shareLink) {
     return { valid: false, redirectUrl: `${clientUrl}/events` };
@@ -65,7 +61,6 @@ const processShareLinkClick = async ({ token, visitorUserId = null, visitorId })
   const ownerIdStr = shareLink.owner.toString();
   const visitorUserIdStr = visitorUserId ? visitorUserId.toString() : null;
 
-  // 2. If visitor is owner, skip recording click & redirect
   if (visitorUserIdStr && visitorUserIdStr === ownerIdStr) {
     return {
       valid: true,
@@ -74,15 +69,14 @@ const processShareLinkClick = async ({ token, visitorUserId = null, visitorId })
     };
   }
 
-  // 3. Conditional Atomic Update to prevent duplicate click race conditions
   const matchCondition = {
     token,
-    'clicks.visitorId': { $ne: visitorId }, // visitorId not already in clicks array
+    'clicks.visitorId': { $ne: visitorId },
   };
 
   if (visitorUserIdStr) {
-    matchCondition.owner = { $ne: visitorUserIdStr }; // Not owner
-    matchCondition['clicks.userId'] = { $ne: visitorUserIdStr }; // userId not already in clicks
+    matchCondition.owner = { $ne: visitorUserIdStr };
+    matchCondition['clicks.userId'] = { $ne: visitorUserIdStr };
   }
 
   const updatedLink = await ShareLink.findOneAndUpdate(
@@ -100,8 +94,9 @@ const processShareLinkClick = async ({ token, visitorUserId = null, visitorId })
     { new: true }
   );
 
-  // 4. If atomic update succeeded (new unique click recorded), emit real-time event
+  // Late-require socketManager to avoid circular dependency
   if (updatedLink) {
+    const { emitToUserRoom } = require('../sockets/socketManager');
     emitToUserRoom(updatedLink.owner, 'friends:updated', {
       eventId: updatedLink.eventId,
       count: updatedLink.uniqueClickCount,
@@ -115,18 +110,12 @@ const processShareLinkClick = async ({ token, visitorUserId = null, visitorId })
   };
 };
 
-/**
- * Compute sum of uniqueClickCount for eventId owned by userId
- */
 const getFriendsAttendingCount = async ({ userId, eventId }) => {
   if (!userId || !eventId) return 0;
   const link = await ShareLink.findOne({ owner: userId, eventId });
   return link ? link.uniqueClickCount : 0;
 };
 
-/**
- * Bulk compute friendsAttending for multiple events owned by userId
- */
 const getFriendsAttendingMap = async ({ userId, eventIds = [] }) => {
   if (!userId || eventIds.length === 0) return {};
   const links = await ShareLink.find({ owner: userId, eventId: { $in: eventIds } });

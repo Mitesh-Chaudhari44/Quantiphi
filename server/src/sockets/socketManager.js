@@ -1,11 +1,10 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const ChatMessage = require('../models/ChatMessage');
+const assistantService = require('../services/assistantService');
 
 let io = null;
 
-/**
- * Initialize Socket.IO server with JWT authentication
- */
 const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
@@ -14,7 +13,6 @@ const initSocket = (httpServer) => {
     },
   });
 
-  // Socket authentication middleware
   io.use((socket, next) => {
     let token = socket.handshake.auth?.token || socket.handshake.headers?.authorization;
 
@@ -28,7 +26,7 @@ const initSocket = (httpServer) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_jwt_key_event_finder_2026');
-      socket.user = decoded; // Contains id, email
+      socket.user = decoded;
       next();
     } catch (err) {
       return next(new Error('Socket authentication error: Token invalid'));
@@ -40,6 +38,46 @@ const initSocket = (httpServer) => {
     socket.join(userRoom);
     console.log(`[Socket.IO]: User ${socket.user.email} (${socket.user.id}) connected & joined ${userRoom}`);
 
+    socket.on('chat:message', async (data) => {
+      try {
+        const text = data?.text?.trim();
+        if (!text) return;
+
+        // 1. Save user message
+        const userMsg = await ChatMessage.create({
+          user: socket.user.id,
+          role: 'user',
+          text,
+        });
+
+        // 2. Emit typing indicator to user's room
+        io.to(userRoom).emit('chat:typing', { typing: true });
+
+        // 3. Process assistant response
+        const assistantResult = await assistantService.processUserMessage(socket.user.id, text);
+
+        // 4. Save assistant message
+        const assistantMsg = await ChatMessage.create({
+          user: socket.user.id,
+          role: 'assistant',
+          text: assistantResult.text,
+          payload: assistantResult.payload || null,
+        });
+
+        // 5. Emit assistant reply & stop typing
+        io.to(userRoom).emit('chat:typing', { typing: false });
+        io.to(userRoom).emit('chat:reply', assistantMsg.toJSON());
+      } catch (err) {
+        console.error('[Socket Chat Error Stack]:', err.stack || err.message);
+        io.to(userRoom).emit('chat:typing', { typing: false });
+        io.to(userRoom).emit('chat:reply', {
+          role: 'assistant',
+          text: '⚠️ Sorry, an error occurred while processing your request. Please try again!',
+          payload: { suggestions: ['Help'] },
+        });
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log(`[Socket.IO]: User ${socket.user.id} disconnected`);
     });
@@ -48,9 +86,6 @@ const initSocket = (httpServer) => {
   return io;
 };
 
-/**
- * Helper to emit event to a specific user's room
- */
 const emitToUserRoom = (userId, eventName, payload) => {
   if (!io) {
     console.warn('[Socket.IO]: Socket server not initialized yet');

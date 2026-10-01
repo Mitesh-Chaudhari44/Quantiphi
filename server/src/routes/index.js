@@ -6,6 +6,7 @@ const rsvpRoutes = require('./rsvpRoutes');
 const shareRoutes = require('./shareRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const devRoutes = require('./devRoutes');
+const chatRoutes = require('./chatRoutes');
 
 const router = express.Router();
 
@@ -14,6 +15,7 @@ router.use('/users', userRoutes);
 router.use('/events', eventRoutes);
 router.use('/rsvps', rsvpRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/chat', chatRoutes);
 router.use('/dev', devRoutes);
 router.use('/', shareRoutes);
 
