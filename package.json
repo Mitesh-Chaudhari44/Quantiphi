@@ -1,0 +1,16 @@
+{
+  "name": "event-finder-and-tracker-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-stack Real-time Event Finder & Tracker Platform",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "start:server": "npm run start --prefix server",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "build:client": "npm run build --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
